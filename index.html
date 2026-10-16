@@ -1,0 +1,2448 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>地理学习工具 · 3D 太阳系</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      overflow: hidden;
+      font-family: 'Arial', 'Microsoft YaHei', sans-serif;
+      background: #050510;
+    }
+
+    /* ============ 主菜单（地理学习风格） ============ */
+    #main-menu {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: radial-gradient(ellipse at center, #0a1428 0%, #02060e 100%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 5000;
+      transition: opacity 0.5s;
+    }
+    #main-menu.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .menu-box {
+      text-align: center;
+      width: 440px;
+      max-width: 90%;
+    }
+    .menu-title {
+      font-size: 42px;
+      font-weight: 600;
+      letter-spacing: 8px;
+      color: #6ab0e8;
+      text-shadow: 0 0 30px rgba(100, 180, 255, 0.4);
+      margin-bottom: 6px;
+      user-select: none;
+      position: relative;
+    }
+    .menu-subtitle {
+      font-size: 14px;
+      letter-spacing: 4px;
+      color: #4a6a8a;
+      margin-bottom: 8px;
+      user-select: none;
+    }
+    .menu-desc {
+      font-size: 12px;
+      color: #3a5a7a;
+      margin-bottom: 32px;
+      line-height: 1.8;
+      user-select: none;
+    }
+    .menu-field {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+      text-align: left;
+    }
+    .menu-field label {
+      color: #88aacc;
+      font-size: 13px;
+      width: 50px;
+      flex-shrink: 0;
+    }
+    .menu-field input {
+      flex: 1;
+      background: rgba(10, 20, 35, 0.9);
+      border: 1px solid rgba(100, 180, 255, 0.25);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: #d0d8f0;
+      font-size: 14px;
+      outline: none;
+      transition: 0.2s;
+    }
+    .menu-field input:focus {
+      border-color: #4a8ad0;
+      box-shadow: 0 0 12px rgba(74, 138, 208, 0.3);
+    }
+    .menu-btn {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s;
+      letter-spacing: 2px;
+      margin-bottom: 10px;
+    }
+    .menu-btn.primary {
+      background: linear-gradient(135deg, #1a4a7a, #2a6aaa);
+      color: #e0f0ff;
+      box-shadow: 0 4px 20px rgba(40, 100, 180, 0.4);
+    }
+    .menu-btn.primary:hover {
+      background: linear-gradient(135deg, #2a5a8a, #3a7aba);
+      box-shadow: 0 6px 28px rgba(60, 130, 220, 0.5);
+      transform: translateY(-1px);
+    }
+    .menu-btn.secondary {
+      background: rgba(20, 35, 55, 0.8);
+      color: #88aacc;
+      border: 1px solid rgba(100, 180, 255, 0.2);
+    }
+    .menu-btn.secondary:hover {
+      background: rgba(40, 65, 100, 0.9);
+      color: #cce0ff;
+    }
+    .menu-hint {
+      color: #3a5a7a;
+      font-size: 12px;
+      margin-top: 16px;
+      line-height: 1.8;
+      user-select: none;
+    }
+    .menu-hint .key {
+      display: inline-block;
+      background: rgba(100, 180, 255, 0.08);
+      border: 1px solid rgba(100, 180, 255, 0.15);
+      border-radius: 4px;
+      padding: 1px 6px;
+      margin: 0 2px;
+      color: #6a9acc;
+      font-family: 'Courier New', monospace;
+    }
+    /* 隐藏触发点：标题右上角一个小点 */
+    .hidden-trigger {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      cursor: pointer;
+      background: transparent;
+      transition: 0.3s;
+    }
+    .hidden-trigger:hover {
+      background: rgba(100, 180, 255, 0.15);
+    }
+
+    /* ============ 游戏区域 ============ */
+    #game-container {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      display: none;
+    }
+    #game-container.active { display: block; }
+
+    #info {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      color: rgba(255, 255, 255, 0.9);
+      background: rgba(0, 0, 0, 0.55);
+      padding: 6px 16px;
+      border-radius: 30px;
+      font-size: 13px;
+      pointer-events: none;
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(100, 180, 255, 0.3);
+      z-index: 100;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      user-select: none;
+    }
+    #left-panel {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      width: 250px;
+      max-height: calc(100vh - 80px);
+      background: rgba(8, 16, 32, 0.88);
+      backdrop-filter: blur(12px);
+      border-radius: 16px;
+      border: 1px solid rgba(100, 180, 255, 0.35);
+      box-shadow: 0 8px 32px rgba(0, 20, 60, 0.8);
+      color: #e0f0ff;
+      padding: 14px;
+      z-index: 200;
+      font-size: 12px;
+      line-height: 1.5;
+      overflow-y: auto;
+    }
+    #left-panel::-webkit-scrollbar { width: 4px; }
+    #left-panel::-webkit-scrollbar-track { background: transparent; }
+    #left-panel::-webkit-scrollbar-thumb { background: rgba(100,180,255,0.3); border-radius: 2px; }
+    #left-panel h3 {
+      margin: 0 0 8px 0;
+      font-size: 14px;
+      font-weight: 500;
+      color: #aaddff;
+      letter-spacing: 1px;
+      border-bottom: 1px solid rgba(100, 180, 255, 0.3);
+      padding-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    #left-panel h3 .icon { font-size: 16px; }
+    .data-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 3px 0;
+      border-bottom: 1px solid rgba(80, 140, 200, 0.12);
+      font-size: 12px;
+    }
+    .data-item:last-child { border-bottom: none; }
+    .data-label { color: #88bbdd; }
+    .data-value {
+      font-family: 'Courier New', monospace;
+      font-weight: 600;
+      color: #ffffff;
+      text-align: right;
+    }
+    .data-value.highlight { color: #ffcc44; }
+    .divider {
+      height: 1px;
+      background: rgba(100, 180, 255, 0.2);
+      margin: 10px 0;
+    }
+    .control-group { margin-bottom: 10px; }
+    .control-group label {
+      display: flex;
+      justify-content: space-between;
+      color: #88bbdd;
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+    .control-group label .val {
+      color: #ffcc44;
+      font-family: 'Courier New', monospace;
+      font-weight: 600;
+    }
+    input[type="range"] {
+      width: 100%;
+      height: 4px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: rgba(100, 180, 255, 0.2);
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #4a8ad0;
+      border: 2px solid #88ccff;
+      cursor: pointer;
+      box-shadow: 0 0 8px rgba(100, 180, 255, 0.6);
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #4a8ad0;
+      border: 2px solid #88ccff;
+      cursor: pointer;
+    }
+    .checkbox-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 6px;
+      transition: 0.15s;
+      user-select: none;
+    }
+    .checkbox-item:hover { background: rgba(100, 180, 255, 0.08); }
+    .checkbox-item input[type="checkbox"] {
+      width: 14px;
+      height: 14px;
+      accent-color: #4a8ad0;
+      cursor: pointer;
+    }
+    .checkbox-item .cb-label { color: #cce0ff; font-size: 12px; flex: 1; }
+    .checkbox-item .cb-color {
+      width: 12px;
+      height: 3px;
+      border-radius: 2px;
+      margin-left: 4px;
+    }
+    .cb-color.equator { background: #ffaa00; }
+    .cb-color.tropic { background: #ff6633; }
+    .cb-color.arctic { background: #44ddff; }
+    .season-display {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 8px;
+      padding: 8px 10px;
+      margin-top: 6px;
+      border: 1px solid rgba(100, 180, 255, 0.2);
+    }
+    .season-display .season-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: #ffcc44;
+      text-shadow: 0 0 10px rgba(255, 200, 60, 0.5);
+    }
+    .season-display .season-desc { font-size: 11px; color: #88aacc; }
+    .btn-row { display: flex; gap: 6px; margin-top: 8px; }
+    .btn {
+      flex: 1;
+      background: rgba(40, 60, 90, 0.8);
+      border: 1px solid rgba(100, 180, 255, 0.3);
+      border-radius: 6px;
+      padding: 6px 8px;
+      color: #cce0ff;
+      font-size: 11px;
+      cursor: pointer;
+      transition: 0.2s;
+      text-align: center;
+    }
+    .btn:hover { background: rgba(60, 90, 130, 0.9); }
+    .btn.active {
+      background: rgba(60, 120, 200, 0.8);
+      border-color: #88ccff;
+      color: #ffffff;
+    }
+    .btn.quiz-btn {
+      background: rgba(80, 40, 120, 0.8);
+      border-color: rgba(180, 100, 255, 0.4);
+      color: #d0b0ff;
+    }
+    .btn.quiz-btn:hover { background: rgba(100, 60, 150, 0.9); }
+    #status-bar {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 230px;
+      background: rgba(8, 16, 32, 0.85);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      border: 1px solid rgba(100, 180, 255, 0.35);
+      box-shadow: 0 8px 32px rgba(0, 20, 60, 0.8);
+      color: #e0f0ff;
+      padding: 14px;
+      z-index: 200;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    #status-bar h3 {
+      margin: 0 0 8px 0;
+      font-size: 14px;
+      font-weight: 500;
+      color: #aaddff;
+      letter-spacing: 1px;
+      border-bottom: 1px solid rgba(100, 180, 255, 0.3);
+      padding-bottom: 6px;
+    }
+    .status-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 5px;
+      padding: 2px 0;
+    }
+    .status-label { color: #88bbdd; font-size: 12px; }
+    .status-value {
+      font-family: 'Courier New', monospace;
+      font-weight: 600;
+      font-size: 13px;
+      color: #ffffff;
+      text-align: right;
+    }
+    .status-value .lat { color: #88ddff; }
+    .status-value .lng { color: #ffaa66; }
+    .line-legend {
+      margin-top: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 10px;
+      font-size: 11px;
+      color: #aaccee;
+      border-top: 1px dashed rgba(100, 180, 255, 0.3);
+      padding-top: 6px;
+    }
+    .line-legend span { display: flex; align-items: center; gap: 4px; }
+    .line-legend .dot {
+      display: inline-block;
+      width: 10px;
+      height: 2px;
+      border-radius: 2px;
+    }
+    .dot.equator { background: #ffaa00; }
+    .dot.tropic { background: #ff6633; }
+    .dot.arctic { background: #44ddff; }
+    #instruction {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(255, 255, 255, 0.55);
+      background: rgba(0, 0, 0, 0.45);
+      padding: 6px 20px;
+      border-radius: 30px;
+      font-size: 12px;
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      pointer-events: none;
+      z-index: 100;
+      white-space: nowrap;
+    }
+    #loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #88aadd;
+      font-size: 16px;
+      z-index: 300;
+      background: rgba(0,0,0,0.7);
+      padding: 16px 32px;
+      border-radius: 12px;
+      border: 1px solid rgba(100,180,255,0.3);
+    }
+    #password-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(8px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 6000;
+    }
+    #password-modal.active { display: flex; }
+    .password-box {
+      background: #0e1626;
+      border-radius: 16px;
+      border: 1px solid rgba(100, 180, 255, 0.4);
+      box-shadow: 0 20px 60px rgba(0, 20, 60, 0.9);
+      padding: 24px;
+      width: 320px;
+      text-align: center;
+    }
+    .password-box h3 {
+      color: #aaddff;
+      font-size: 16px;
+      margin-bottom: 16px;
+      font-weight: 500;
+    }
+    .password-box input {
+      width: 100%;
+      background: #0a0f18;
+      border: 1px solid rgba(100, 180, 255, 0.3);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: #d0d8f0;
+      font-size: 14px;
+      text-align: center;
+      outline: none;
+      margin-bottom: 16px;
+      letter-spacing: 2px;
+    }
+    .password-box input:focus { border-color: #4a8ad0; }
+    .password-box .btn-row { display: flex; gap: 8px; }
+    .password-box .btn { padding: 8px; font-size: 13px; }
+    .password-box .btn.primary {
+      background: rgba(60, 120, 200, 0.8);
+      border-color: #88ccff;
+      color: #ffffff;
+    }
+    .password-box .btn.primary:hover { background: rgba(80, 150, 230, 0.9); }
+    .password-error {
+      color: #ff6666;
+      font-size: 12px;
+      margin-bottom: 8px;
+      min-height: 16px;
+    }
+    #darkroom-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #000;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 7000;
+    }
+    #darkroom-modal.active { display: flex; }
+    .darkroom-container {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      background: #050508;
+      overflow: hidden;
+    }
+    .darkroom-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .darkroom-hud {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 10;
+    }
+    .darkroom-hud .hud-top {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      color: #cccccc;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      text-shadow: 0 0 8px rgba(0,0,0,0.8);
+      line-height: 1.8;
+    }
+    .darkroom-hud .hud-top .sanity { color: #88ddff; }
+    .darkroom-hud .hud-top .battery { color: #ffdd88; }
+    .darkroom-hud .hud-top .kills { color: #ff8888; }
+    .darkroom-hud .hud-top .keys { color: #ffcc44; }
+    .darkroom-hud .hud-message {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #ff6666;
+      font-size: 24px;
+      font-family: 'Courier New', monospace;
+      text-shadow: 0 0 20px rgba(255,0,0,0.6);
+      text-align: center;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .darkroom-hud .hud-vignette {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      background: radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.8) 100%);
+    }
+    .darkroom-hud .hud-anomaly {
+      position: absolute;
+      bottom: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #cc3333;
+      font-size: 18px;
+      font-family: 'Courier New', monospace;
+      text-shadow: 0 0 12px rgba(200,0,0,0.5);
+      text-align: center;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.5s;
+      max-width: 80%;
+    }
+    .darkroom-hud .hud-anomaly.show { opacity: 1; }
+    .darkroom-hud .hud-crosshair {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 6px;
+      height: 6px;
+      background: rgba(200,200,200,0.6);
+      border-radius: 50%;
+      pointer-events: none;
+      box-shadow: 0 0 6px rgba(200,200,200,0.3);
+    }
+    .darkroom-hud .hud-controls {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(255,255,255,0.35);
+      font-size: 12px;
+      font-family: 'Courier New', monospace;
+      pointer-events: none;
+    }
+    .darkroom-hud .hud-exit {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      color: #888888;
+      font-size: 13px;
+      cursor: pointer;
+      pointer-events: auto;
+      background: rgba(0,0,0,0.6);
+      padding: 6px 14px;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.15);
+      transition: 0.2s;
+    }
+    .darkroom-hud .hud-exit:hover {
+      color: #ffffff;
+      background: rgba(60,0,0,0.7);
+      border-color: #ff4444;
+    }
+    .darkroom-hud .hud-minimap {
+      position: absolute;
+      bottom: 60px;
+      right: 20px;
+      width: 160px;
+      height: 160px;
+      background: rgba(0, 0, 0, 0.75);
+      border: 1px solid rgba(100, 180, 255, 0.4);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+    }
+    .darkroom-hud .hud-minimap canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .darkroom-hud .hud-minimap-label {
+      position: absolute;
+      top: 4px;
+      left: 6px;
+      color: #88aacc;
+      font-size: 10px;
+      font-family: 'Courier New', monospace;
+      pointer-events: none;
+    }
+    #quiz-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(8px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 4000;
+      padding: 20px;
+    }
+    #quiz-modal.active { display: flex; }
+    .quiz-container {
+      width: 560px;
+      max-width: 100%;
+      max-height: 90vh;
+      background: #101828;
+      border-radius: 20px;
+      border: 1px solid rgba(100, 180, 255, 0.4);
+      box-shadow: 0 20px 60px rgba(0, 20, 60, 0.9);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .quiz-header {
+      background: linear-gradient(135deg, #1a2a4a, #0f1a30);
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(100, 180, 255, 0.3);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .quiz-header h2 {
+      color: #aaddff;
+      font-size: 16px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .quiz-header .quiz-close {
+      background: none;
+      border: none;
+      color: #88aacc;
+      font-size: 22px;
+      cursor: pointer;
+      padding: 0 4px;
+      line-height: 1;
+      transition: 0.2s;
+    }
+    .quiz-header .quiz-close:hover { color: #ff6666; }
+    .quiz-progress {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 20px 0;
+      flex-shrink: 0;
+    }
+    .quiz-progress-bar {
+      flex: 1;
+      height: 6px;
+      background: rgba(100, 180, 255, 0.15);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .quiz-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #4a8ad0, #88ccff);
+      border-radius: 3px;
+      transition: width 0.3s ease;
+      width: 0%;
+    }
+    .quiz-progress-text {
+      color: #88aacc;
+      font-size: 12px;
+      font-family: 'Courier New', monospace;
+      white-space: nowrap;
+    }
+    .quiz-body {
+      padding: 16px 20px 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .quiz-body::-webkit-scrollbar { width: 4px; }
+    .quiz-body::-webkit-scrollbar-track { background: transparent; }
+    .quiz-body::-webkit-scrollbar-thumb { background: rgba(100,180,255,0.3); border-radius: 2px; }
+    .quiz-question {
+      color: #e0f0ff;
+      font-size: 15px;
+      line-height: 1.6;
+      margin-bottom: 16px;
+      padding: 12px 14px;
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 10px;
+      border-left: 3px solid #4a8ad0;
+    }
+    .quiz-question .q-number {
+      color: #88ccff;
+      font-weight: 600;
+      margin-right: 6px;
+    }
+    .quiz-options {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .quiz-option {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: rgba(20, 35, 60, 0.6);
+      border: 1px solid rgba(100, 180, 255, 0.2);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: 0.15s;
+      color: #cce0ff;
+      font-size: 13px;
+    }
+    .quiz-option:hover {
+      background: rgba(40, 70, 110, 0.7);
+      border-color: rgba(100, 180, 255, 0.5);
+    }
+    .quiz-option.selected {
+      background: rgba(50, 100, 170, 0.7);
+      border-color: #88ccff;
+      color: #ffffff;
+    }
+    .quiz-option.correct {
+      background: rgba(30, 100, 50, 0.7);
+      border-color: #44dd88;
+      color: #ccffdd;
+    }
+    .quiz-option.wrong {
+      background: rgba(100, 30, 30, 0.7);
+      border-color: #ff6666;
+      color: #ffcccc;
+    }
+    .quiz-option.disabled { pointer-events: none; opacity: 0.7; }
+    .quiz-option .opt-letter {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: rgba(100, 180, 255, 0.15);
+      color: #88ccff;
+      font-weight: 600;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+    .quiz-option.selected .opt-letter {
+      background: rgba(100, 180, 255, 0.4);
+      color: #ffffff;
+    }
+    .quiz-option.correct .opt-letter {
+      background: rgba(68, 221, 136, 0.4);
+      color: #ffffff;
+    }
+    .quiz-option.wrong .opt-letter {
+      background: rgba(255, 102, 102, 0.4);
+      color: #ffffff;
+    }
+    .quiz-footer {
+      padding: 12px 20px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid rgba(100, 180, 255, 0.15);
+      flex-shrink: 0;
+    }
+    .quiz-score { color: #88aacc; font-size: 13px; }
+    .quiz-score .score-val {
+      color: #ffcc44;
+      font-weight: 600;
+      font-family: 'Courier New', monospace;
+    }
+    .quiz-nav { display: flex; gap: 8px; }
+    .quiz-nav .btn { padding: 8px 20px; font-size: 13px; }
+    .quiz-nav .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .quiz-nav .btn.primary {
+      background: rgba(60, 120, 200, 0.8);
+      border-color: #88ccff;
+      color: #ffffff;
+    }
+    .quiz-nav .btn.primary:hover:not(:disabled) { background: rgba(80, 150, 230, 0.9); }
+    .quiz-result { text-align: center; padding: 20px 0; }
+    .quiz-result .result-icon { font-size: 56px; margin-bottom: 12px; }
+    .quiz-result .result-title { font-size: 22px; color: #aaddff; margin-bottom: 8px; }
+    .quiz-result .result-score {
+      font-size: 36px;
+      font-weight: 700;
+      color: #ffcc44;
+      font-family: 'Courier New', monospace;
+      margin: 12px 0;
+      text-shadow: 0 0 20px rgba(255, 200, 60, 0.4);
+    }
+    .quiz-result .result-detail { color: #88aacc; font-size: 14px; margin-bottom: 20px; }
+    .quiz-result .result-actions { display: flex; gap: 10px; justify-content: center; }
+    @media (max-width: 900px) {
+      #left-panel { width: 200px; font-size: 11px; padding: 10px; top: 10px; left: 10px; }
+      #status-bar { width: 180px; padding: 10px; font-size: 11px; top: 10px; right: 10px; }
+      #status-bar h3 { font-size: 12px; }
+      .status-value { font-size: 11px; }
+      .status-label { font-size: 10px; }
+      #info { font-size: 11px; padding: 5px 10px; top: 10px; left: 10px; }
+      #instruction { font-size: 10px; padding: 5px 12px; bottom: 10px; }
+      .quiz-container { width: 95%; }
+      .menu-title { font-size: 32px; letter-spacing: 6px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ============ 主菜单（地理学习风格） ============ -->
+  <div id="main-menu">
+    <div class="menu-box">
+      <div class="menu-title">
+        地理学习工具
+        <span class="hidden-trigger" id="hiddenTrigger" title=""></span>
+      </div>
+      <div class="menu-subtitle">G E O G R A P H Y &nbsp; L A B</div>
+      <div class="menu-desc">
+        3D 太阳系 · 地球公转 · 四季变换 · 地理测验
+      </div>
+
+      <div class="menu-field">
+        <label>昵称</label>
+        <input type="text" id="menuName" value="同学" maxlength="12">
+      </div>
+
+      <button class="menu-btn primary" id="btnEnterWorld">🌞 进入地理实验室</button>
+      <button class="menu-btn secondary" id="btnExit">退出</button>
+
+      <div class="menu-hint">
+        <span class="key">拖动</span> 旋转视角 &nbsp;
+        <span class="key">滚轮</span> 缩放 &nbsp;
+        <span class="key">悬停地球</span> 查看经纬度 &nbsp;
+        <span class="key">M</span> 地图
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 游戏区域 ============ -->
+  <div id="game-container">
+    <div id="info">🌞 3D 太阳系 · 地球公转 · 四季变换 · 地理学习</div>
+    <div id="loading">加载中...</div>
+
+    <div id="left-panel">
+      <h3><span class="icon">📊</span> 地球数据</h3>
+      <div class="data-item"><span class="data-label">赤道半径</span><span class="data-value">6378.137 km</span></div>
+      <div class="data-item"><span class="data-label">极半径</span><span class="data-value">6356.752 km</span></div>
+      <div class="data-item"><span class="data-label">平均半径</span><span class="data-value">6371 km</span></div>
+      <div class="data-item"><span class="data-label">赤道周长</span><span class="data-value">40075 km</span></div>
+      <div class="data-item"><span class="data-label">表面积</span><span class="data-value">5.1亿 km²</span></div>
+      <div class="data-item"><span class="data-label">质量</span><span class="data-value">5.97×10²⁴ kg</span></div>
+      <div class="data-item"><span class="data-label">平均密度</span><span class="data-value">5.51 g/cm³</span></div>
+      <div class="data-item"><span class="data-label">自转周期</span><span class="data-value">23h56m4s</span></div>
+      <div class="data-item"><span class="data-label">公转周期</span><span class="data-value">365.25天</span></div>
+      <div class="data-item"><span class="data-label">黄赤交角</span><span class="data-value highlight">23°26'</span></div>
+      <div class="data-item"><span class="data-label">日地距离</span><span class="data-value">1.496亿 km</span></div>
+      <div class="data-item"><span class="data-label">太阳半径</span><span class="data-value">696,340 km</span></div>
+      <div class="data-item"><span class="data-label">太阳质量</span><span class="data-value">1.989×10³⁰ kg</span></div>
+      <div class="data-item"><span class="data-label">太阳表面温度</span><span class="data-value highlight">5500 °C</span></div>
+
+      <div class="divider"></div>
+
+      <h3><span class="icon">⚙️</span> 参数调节</h3>
+
+      <div class="control-group">
+        <label>公转速度 <span class="val" id="speedVal">1.0x</span></label>
+        <input type="range" id="speedSlider" min="0" max="3" step="0.1" value="1.0">
+      </div>
+
+      <div class="control-group">
+        <label>地轴倾斜 <span class="val" id="tiltVal">23.5°</span></label>
+        <input type="range" id="tiltSlider" min="0" max="45" step="0.5" value="23.5">
+      </div>
+
+      <div class="control-group">
+        <label>公转位置 <span class="val" id="orbitPosVal">0°</span></label>
+        <input type="range" id="orbitSlider" min="0" max="360" step="1" value="0">
+      </div>
+
+      <div class="season-display">
+        <div>
+          <div class="season-name" id="seasonName">春分</div>
+          <div class="season-desc" id="seasonDesc">3月21日前后</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:10px;color:#88aacc;">北半球</div>
+          <div style="font-size:10px;color:#88aacc;" id="seasonExtra">昼夜平分</div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <h3><span class="icon">📍</span> 纬线显示</h3>
+      <div class="checkbox-group">
+        <label class="checkbox-item">
+          <input type="checkbox" id="cbEquator" checked>
+          <span class="cb-label">赤道 (0°)</span>
+          <span class="cb-color equator"></span>
+        </label>
+        <label class="checkbox-item">
+          <input type="checkbox" id="cbTropic" checked>
+          <span class="cb-label">回归线 (23.5°)</span>
+          <span class="cb-color tropic"></span>
+        </label>
+        <label class="checkbox-item">
+          <input type="checkbox" id="cbArctic" checked>
+          <span class="cb-label">极圈 (66.5°)</span>
+          <span class="cb-color arctic"></span>
+        </label>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="btn-row">
+        <button class="btn" id="btnPlay">⏸ 暂停</button>
+        <button class="btn" id="btnReset">↺ 重置</button>
+      </div>
+      <div class="btn-row" style="margin-top:6px;">
+        <button class="btn quiz-btn" id="btnQuiz">📝 开始测验</button>
+      </div>
+      <div class="btn-row" style="margin-top:6px;">
+        <button class="btn" id="btnBackToMenu">← 返回主菜单</button>
+      </div>
+    </div>
+
+    <div id="status-bar">
+      <h3>📍 状态栏</h3>
+      <div class="status-item">
+        <span class="status-label">经度</span>
+        <span class="status-value"><span class="lng" id="lngVal">--°</span></span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">纬度</span>
+        <span class="status-value"><span class="lat" id="latVal">--°</span></span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">视角</span>
+        <span class="status-value" id="viewAngle">--</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">公转</span>
+        <span class="status-value" id="orbitAngleDisplay">0°</span>
+      </div>
+      <div class="line-legend">
+        <span><i class="dot equator"></i> 赤道</span>
+        <span><i class="dot tropic"></i> 回归线</span>
+        <span><i class="dot arctic"></i> 极圈</span>
+      </div>
+    </div>
+
+    <div id="instruction">拖动旋转视角 | 滚动缩放 | 鼠标悬停地球查看经纬度</div>
+  </div>
+
+  <!-- 密码弹窗 -->
+  <div id="password-modal">
+    <div class="password-box">
+      <h3>🔐 请输入密码</h3>
+      <input type="password" id="passwordInput" placeholder="输入密码..." autocomplete="off">
+      <div class="password-error" id="passwordError"></div>
+      <div class="btn-row">
+        <button class="btn" id="passwordCancel">取消</button>
+        <button class="btn primary" id="passwordConfirm">确认</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 暗室 -->
+  <div id="darkroom-modal">
+    <div class="darkroom-container">
+      <canvas class="darkroom-canvas" id="darkroomCanvas"></canvas>
+      <div class="darkroom-hud">
+        <div class="hud-top">
+          <div>精神: <span class="sanity" id="drSanity">100</span></div>
+          <div>手电: <span class="battery" id="drBattery">100%</span></div>
+          <div>击杀: <span class="kills" id="drKills">0</span></div>
+          <div>钥匙: <span class="keys" id="drKeys">0/4</span></div>
+        </div>
+        <div class="hud-crosshair"></div>
+        <div class="hud-message" id="drMessage"></div>
+        <div class="hud-anomaly" id="drAnomaly"></div>
+        <div class="hud-vignette" id="drVignette" style="opacity:0;"></div>
+        <div class="hud-controls">WASD 移动 | 鼠标 视角 | 左键 开枪 | R 换弹 | F 手电 | Esc 退出</div>
+        <div class="hud-exit" id="drExit">✕ 退出暗室</div>
+        <div class="hud-minimap">
+          <canvas id="drMinimapCanvas" width="160" height="160"></canvas>
+          <div class="hud-minimap-label">地图</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 测验 -->
+  <div id="quiz-modal">
+    <div class="quiz-container">
+      <div class="quiz-header">
+        <h2>📝 地理测验 <span style="font-size:12px;color:#88aacc;font-weight:400;">共10题</span></h2>
+        <button class="quiz-close" id="quizClose">&times;</button>
+      </div>
+      <div class="quiz-progress">
+        <div class="quiz-progress-bar">
+          <div class="quiz-progress-fill" id="quizProgressFill"></div>
+        </div>
+        <span class="quiz-progress-text" id="quizProgressText">1 / 10</span>
+      </div>
+      <div class="quiz-body" id="quizBody"></div>
+      <div class="quiz-footer">
+        <div class="quiz-score">得分: <span class="score-val" id="quizScore">0</span></div>
+        <div class="quiz-nav">
+          <button class="btn" id="quizPrev" disabled>上一题</button>
+          <button class="btn primary" id="quizNext">下一题</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+      }
+    }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // ============================================================
+    // 主菜单逻辑
+    // ============================================================
+    const mainMenu = document.getElementById('main-menu');
+    const gameContainer = document.getElementById('game-container');
+    const btnEnterWorld = document.getElementById('btnEnterWorld');
+    const btnExit = document.getElementById('btnExit');
+    const btnBackToMenu = document.getElementById('btnBackToMenu');
+    const hiddenTrigger = document.getElementById('hiddenTrigger');
+
+    let darkroomUnlocked = false;
+
+    // 进入地理实验室
+    btnEnterWorld.addEventListener('click', () => {
+      enterGame();
+    });
+
+    // 退出
+    btnExit.addEventListener('click', () => {
+      if (confirm('确定要退出吗？')) {
+        window.close();
+        document.body.innerHTML = '<div style="color:#888;text-align:center;padding-top:40vh;font-family:sans-serif;">感谢使用，可以关闭此页面了。</div>';
+      }
+    });
+
+    // 返回主菜单
+    btnBackToMenu.addEventListener('click', () => {
+      gameContainer.classList.remove('active');
+      mainMenu.classList.remove('hidden');
+    });
+
+    function enterGame() {
+      mainMenu.classList.add('hidden');
+      gameContainer.classList.add('active');
+      if (!window._sceneInitialized) {
+        window._sceneInitialized = true;
+        initSolarSystem();
+      }
+    }
+
+    // ============================================================
+    // 隐藏触发点 → 密码弹窗 → 暗室
+    // ============================================================
+    const passwordModal = document.getElementById('password-modal');
+    const passwordInput = document.getElementById('passwordInput');
+    const passwordConfirm = document.getElementById('passwordConfirm');
+    const passwordCancel = document.getElementById('passwordCancel');
+    const passwordError = document.getElementById('passwordError');
+
+    hiddenTrigger.addEventListener('click', () => {
+      passwordModal.classList.add('active');
+      passwordInput.value = '';
+      passwordError.textContent = '';
+      passwordInput.focus();
+    });
+
+    passwordCancel.addEventListener('click', () => {
+      passwordModal.classList.remove('active');
+    });
+
+    passwordConfirm.addEventListener('click', () => {
+      const val = passwordInput.value.trim();
+      if (val === 'wzynb') {
+        darkroomUnlocked = true;
+        passwordModal.classList.remove('active');
+        enterGame();
+        setTimeout(() => {
+          openDarkRoom();
+        }, 200);
+      } else {
+        passwordError.textContent = '密码错误';
+        passwordInput.value = '';
+        passwordInput.focus();
+      }
+    });
+
+    passwordInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') passwordConfirm.click();
+    });
+
+    passwordModal.addEventListener('click', (e) => {
+      if (e.target === passwordModal) passwordModal.classList.remove('active');
+    });
+
+    // ============================================================
+    // 程序化生成地球纹理
+    // ============================================================
+    function createEarthTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1024;
+      canvas.height = 512;
+      const ctx = canvas.getContext('2d');
+
+      const oceanGrad = ctx.createLinearGradient(0, 0, 0, 512);
+      oceanGrad.addColorStop(0, '#0a2a5a');
+      oceanGrad.addColorStop(0.5, '#1565a8');
+      oceanGrad.addColorStop(1, '#0a2a5a');
+      ctx.fillStyle = oceanGrad;
+      ctx.fillRect(0, 0, 1024, 512);
+
+      function drawContinent(points, color) {
+        ctx.beginPath();
+        ctx.fillStyle = color;
+        points.forEach((p, i) => {
+          const x = (p.lon + 180) / 360 * 1024;
+          const y = (90 - p.lat) / 180 * 512;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        });
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      drawContinent([
+        {lat: 70, lon: 30}, {lat: 75, lon: 100}, {lat: 70, lon: 140},
+        {lat: 55, lon: 160}, {lat: 35, lon: 140}, {lat: 20, lon: 110},
+        {lat: 10, lon: 100}, {lat: 5, lon: 80}, {lat: 25, lon: 65},
+        {lat: 35, lon: 45}, {lat: 45, lon: 35}, {lat: 55, lon: 40},
+        {lat: 65, lon: 25}
+      ], '#2d5a1e');
+
+      drawContinent([
+        {lat: 70, lon: 25}, {lat: 65, lon: 55}, {lat: 55, lon: 60},
+        {lat: 45, lon: 50}, {lat: 40, lon: 30}, {lat: 36, lon: 15},
+        {lat: 42, lon: 0}, {lat: 55, lon: -5}, {lat: 62, lon: 10}
+      ], '#3a6a28');
+
+      drawContinent([
+        {lat: 35, lon: 10}, {lat: 30, lon: 30}, {lat: 10, lon: 45},
+        {lat: -10, lon: 40}, {lat: -25, lon: 35}, {lat: -35, lon: 20},
+        {lat: -25, lon: 15}, {lat: -5, lon: 10}, {lat: 5, lon: -10},
+        {lat: 15, lon: -15}, {lat: 30, lon: -10}
+      ], '#4a7a2a');
+
+      drawContinent([
+        {lat: 70, lon: -140}, {lat: 75, lon: -100}, {lat: 70, lon: -60},
+        {lat: 50, lon: -55}, {lat: 30, lon: -80}, {lat: 20, lon: -100},
+        {lat: 15, lon: -90}, {lat: 25, lon: -110}, {lat: 40, lon: -125},
+        {lat: 60, lon: -140}
+      ], '#2a5a1e');
+
+      drawContinent([
+        {lat: 10, lon: -75}, {lat: 0, lon: -60}, {lat: -10, lon: -35},
+        {lat: -25, lon: -40}, {lat: -40, lon: -50}, {lat: -55, lon: -65},
+        {lat: -40, lon: -70}, {lat: -20, lon: -75}, {lat: 0, lon: -80},
+        {lat: 10, lon: -80}
+      ], '#3a6a28');
+
+      drawContinent([
+        {lat: -12, lon: 130}, {lat: -12, lon: 145}, {lat: -25, lon: 155},
+        {lat: -38, lon: 145}, {lat: -35, lon: 120}, {lat: -20, lon: 115}
+      ], '#5a7a2a');
+
+      ctx.fillStyle = '#e8f0ff';
+      ctx.fillRect(0, 480, 1024, 32);
+      ctx.fillStyle = '#c0d8f0';
+      ctx.fillRect(0, 0, 1024, 15);
+
+      for (let i = 0; i < 3000; i++) {
+        const x = Math.random() * 1024;
+        const y = Math.random() * 512;
+        const alpha = Math.random() * 0.08;
+        ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+        ctx.fillRect(x, y, 1, 1);
+      }
+
+      for (let i = 0; i < 600; i++) {
+        const x = Math.random() * 1024;
+        const y = Math.random() * 512;
+        const r = 3 + Math.random() * 12;
+        const grad = ctx.createRadialGradient(x, y, 0, x, y, r);
+        grad.addColorStop(0, 'rgba(255,255,255,0.25)');
+        grad.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      return new THREE.CanvasTexture(canvas);
+    }
+
+    function createCloudTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1024;
+      canvas.height = 512;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, 1024, 512);
+
+      for (let i = 0; i < 200; i++) {
+        const x = Math.random() * 1024;
+        const y = Math.random() * 512;
+        const r = 8 + Math.random() * 30;
+        const alpha = 0.05 + Math.random() * 0.12;
+        const grad = ctx.createRadialGradient(x, y, 0, x, y, r);
+        grad.addColorStop(0, `rgba(255,255,255,${alpha})`);
+        grad.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      return new THREE.CanvasTexture(canvas);
+    }
+
+    // ============================================================
+    // 100道地理题目库
+    // ============================================================
+    const QUESTION_BANK = [
+      { q: '地球的平均半径约是多少？', opts: ['6371 km', '6378 km', '6356 km', '40075 km'], ans: 0 },
+      { q: '地球的赤道半径约是多少？', opts: ['6371 km', '6378 km', '6356 km', '40075 km'], ans: 1 },
+      { q: '地球的极半径约是多少？', opts: ['6371 km', '6378 km', '6356 km', '40075 km'], ans: 2 },
+      { q: '地球赤道周长约是多少？', opts: ['40075 km', '6371 km', '5.1亿 km²', '1.496亿 km'], ans: 0 },
+      { q: '地球表面积约是多少？', opts: ['40075 km', '5.1亿 km²', '6371 km', '1.496亿 km'], ans: 1 },
+      { q: '最早证明地球是球体的事件是？', opts: ['麦哲伦环球航行', '哥伦布发现美洲', '加加林进入太空', '郑和下西洋'], ans: 0 },
+      { q: '地球的真实形状是？', opts: ['正球体', '两极稍扁、赤道略鼓的不规则球体', '椭球体', '扁球体'], ans: 1 },
+      { q: '地球仪上最长的纬线是？', opts: ['赤道', '北回归线', '南回归线', '北极圈'], ans: 0 },
+      { q: '赤道的纬度是多少？', opts: ['0°', '23.5°', '66.5°', '90°'], ans: 0 },
+      { q: '北回归线的纬度是多少？', opts: ['0°', '23.5°N', '66.5°N', '90°N'], ans: 1 },
+      { q: '南回归线的纬度是多少？', opts: ['0°', '23.5°N', '23.5°S', '66.5°S'], ans: 2 },
+      { q: '北极圈的纬度是多少？', opts: ['0°', '23.5°N', '66.5°N', '90°N'], ans: 2 },
+      { q: '南极圈的纬度是多少？', opts: ['0°', '23.5°S', '66.5°S', '90°S'], ans: 2 },
+      { q: '纬线指示什么方向？', opts: ['东西方向', '南北方向', '东北方向', '西南方向'], ans: 0 },
+      { q: '经线指示什么方向？', opts: ['东西方向', '南北方向', '东北方向', '西南方向'], ans: 1 },
+      { q: '经度的起始线是？', opts: ['赤道', '本初子午线', '180°经线', '北回归线'], ans: 1 },
+      { q: '本初子午线穿过哪个城市？', opts: ['纽约', '伦敦', '巴黎', '东京'], ans: 1 },
+      { q: '东经和西经的分界线是？', opts: ['0°和180°经线', '赤道', '回归线', '极圈'], ans: 0 },
+      { q: '低纬度的范围是？', opts: ['0°~30°', '30°~60°', '60°~90°', '0°~60°'], ans: 0 },
+      { q: '中纬度的范围是？', opts: ['0°~30°', '30°~60°', '60°~90°', '0°~60°'], ans: 1 },
+      { q: '高纬度的范围是？', opts: ['0°~30°', '30°~60°', '60°~90°', '0°~60°'], ans: 2 },
+      { q: '南北半球的分界线是？', opts: ['赤道', '本初子午线', '180°经线', '回归线'], ans: 0 },
+      { q: '东西半球的分界线是？', opts: ['0°和180°经线', '20°W和160°E', '赤道', '回归线'], ans: 1 },
+      { q: '20°W和160°E组成的经线圈是？', opts: ['东西半球分界线', '南北半球分界线', '东西经分界线', '低中纬分界线'], ans: 0 },
+      { q: '地球自转的方向是？', opts: ['自东向西', '自西向东', '自南向北', '自北向南'], ans: 1 },
+      { q: '地球自转的周期约是？', opts: ['24小时', '12小时', '365天', '30天'], ans: 0 },
+      { q: '地球公转的周期约是？', opts: ['24小时', '12小时', '365天', '30天'], ans: 2 },
+      { q: '地球自转产生的地理现象是？', opts: ['昼夜交替', '四季变化', '五带划分', '极昼极夜'], ans: 0 },
+      { q: '地球公转产生的地理现象是？', opts: ['昼夜交替', '四季变化', '时间差异', '日月星辰东升西落'], ans: 1 },
+      { q: '地球公转的方向是？', opts: ['自东向西', '自西向东', '自南向北', '自北向南'], ans: 1 },
+      { q: '地球公转的轨道形状是？', opts: ['正圆', '椭圆', '抛物线', '双曲线'], ans: 1 },
+      { q: '地轴与公转轨道面的夹角是？', opts: ['23.5°', '66.5°', '90°', '45°'], ans: 1 },
+      { q: '黄赤交角的大小是？', opts: ['23.5°', '66.5°', '90°', '45°'], ans: 0 },
+      { q: '北半球夏至日一般在？', opts: ['3月21日前后', '6月22日前后', '9月23日前后', '12月22日前后'], ans: 1 },
+      { q: '北半球冬至日一般在？', opts: ['3月21日前后', '6月22日前后', '9月23日前后', '12月22日前后'], ans: 3 },
+      { q: '北半球春分日一般在？', opts: ['3月21日前后', '6月22日前后', '9月23日前后', '12月22日前后'], ans: 0 },
+      { q: '北半球秋分日一般在？', opts: ['3月21日前后', '6月22日前后', '9月23日前后', '12月22日前后'], ans: 2 },
+      { q: '夏至日太阳直射在哪条纬线上？', opts: ['赤道', '北回归线', '南回归线', '北极圈'], ans: 1 },
+      { q: '冬至日太阳直射在哪条纬线上？', opts: ['赤道', '北回归线', '南回归线', '南极圈'], ans: 2 },
+      { q: '春分日和秋分日太阳直射在哪条纬线上？', opts: ['赤道', '北回归线', '南回归线', '极圈'], ans: 0 },
+      { q: '北半球夏至日，北半球昼夜长短情况是？', opts: ['昼长夜短', '昼短夜长', '昼夜平分', '极夜'], ans: 0 },
+      { q: '北半球冬至日，北半球昼夜长短情况是？', opts: ['昼长夜短', '昼短夜长', '昼夜平分', '极昼'], ans: 1 },
+      { q: '北半球春分日，全球昼夜长短情况是？', opts: ['昼长夜短', '昼短夜长', '昼夜平分', '不确定'], ans: 2 },
+      { q: '地球上五带划分的依据是？', opts: ['太阳热量在地表的分布', '纬度的不同', '经度的不同', '海陆分布'], ans: 0 },
+      { q: '热带的范围是？', opts: ['南北回归线之间', '回归线与极圈之间', '极圈以内', '赤道附近'], ans: 0 },
+      { q: '北温带的范围是？', opts: ['北回归线与北极圈之间', '南回归线与南极圈之间', '赤道与北回归线之间', '北极圈以内'], ans: 0 },
+      { q: '南温带的范围是？', opts: ['北回归线与北极圈之间', '南回归线与南极圈之间', '赤道与南回归线之间', '南极圈以内'], ans: 1 },
+      { q: '北寒带的范围是？', opts: ['北回归线以北', '北极圈以北', '南极圈以南', '赤道以北'], ans: 1 },
+      { q: '南寒带的范围是？', opts: ['南回归线以南', '南极圈以南', '北极圈以北', '赤道以南'], ans: 1 },
+      { q: '有极昼极夜现象的温度带是？', opts: ['热带', '温带', '寒带', '所有温度带'], ans: 2 },
+      { q: '有太阳直射现象的温度带是？', opts: ['热带', '温带', '寒带', '所有温度带'], ans: 0 },
+      { q: '四季变化最明显的温度带是？', opts: ['热带', '温带', '寒带', '所有温度带'], ans: 1 },
+      { q: '地图的基本要素是？', opts: ['比例尺、方向、图例', '经线、纬线、方向', '颜色、符号、文字', '标题、图例、注释'], ans: 0 },
+      { q: '比例尺越大，表示的范围越？', opts: ['大', '小', '不变', '不确定'], ans: 1 },
+      { q: '比例尺越大，表示的内容越？', opts: ['简略', '详细', '不变', '不确定'], ans: 1 },
+      { q: '在指向标地图上，箭头一般指向？', opts: ['东方', '南方', '西方', '北方'], ans: 3 },
+      { q: '在没有指向标的地图上，通常采用什么定向？', opts: ['上北下南，左西右东', '上南下北，左东右西', '上东下西，左北右南', '上西下东，左南右北'], ans: 0 },
+      { q: '等高线密集的地方表示？', opts: ['坡度陡', '坡度缓', '海拔低', '海拔高'], ans: 0 },
+      { q: '等高线稀疏的地方表示？', opts: ['坡度陡', '坡度缓', '海拔低', '海拔高'], ans: 1 },
+      { q: '等高线闭合，数值中间高四周低表示？', opts: ['山顶', '盆地', '山谷', '山脊'], ans: 0 },
+      { q: '等高线闭合，数值中间低四周高表示？', opts: ['山顶', '盆地', '山谷', '山脊'], ans: 1 },
+      { q: '等高线向高处凸出的部位是？', opts: ['山脊', '山谷', '鞍部', '陡崖'], ans: 1 },
+      { q: '等高线向低处凸出的部位是？', opts: ['山脊', '山谷', '鞍部', '陡崖'], ans: 0 },
+      { q: '两个山顶之间的低地是？', opts: ['鞍部', '山谷', '山脊', '盆地'], ans: 0 },
+      { q: '等高线重叠的地方是？', opts: ['陡崖', '鞍部', '山谷', '山脊'], ans: 0 },
+      { q: '地球表面海洋面积约占？', opts: ['71%', '29%', '50%', '61%'], ans: 0 },
+      { q: '地球表面陆地面积约占？', opts: ['71%', '29%', '50%', '39%'], ans: 1 },
+      { q: '世界上最大的大洋是？', opts: ['太平洋', '大西洋', '印度洋', '北冰洋'], ans: 0 },
+      { q: '世界上最小的大洋是？', opts: ['太平洋', '大西洋', '印度洋', '北冰洋'], ans: 3 },
+      { q: '世界上最大的大陆是？', opts: ['亚欧大陆', '非洲大陆', '北美大陆', '南极大陆'], ans: 0 },
+      { q: '世界上最小的大陆是？', opts: ['澳大利亚大陆', '南极大陆', '南美大陆', '非洲大陆'], ans: 0 },
+      { q: '世界上最大的岛屿是？', opts: ['格陵兰岛', '台湾岛', '海南岛', '马达加斯加岛'], ans: 0 },
+      { q: '世界上最大的半岛是？', opts: ['阿拉伯半岛', '印度半岛', '中南半岛', '朝鲜半岛'], ans: 0 },
+      { q: '亚洲和欧洲的分界线是？', opts: ['乌拉尔山脉—乌拉尔河—大高加索山脉—土耳其海峡', '苏伊士运河', '巴拿马运河', '白令海峡'], ans: 0 },
+      { q: '亚洲和非洲的分界线是？', opts: ['苏伊士运河', '巴拿马运河', '乌拉尔山脉', '白令海峡'], ans: 0 },
+      { q: '北美洲和南美洲的分界线是？', opts: ['巴拿马运河', '苏伊士运河', '乌拉尔山脉', '白令海峡'], ans: 0 },
+      { q: '亚洲和北美洲的分界线是？', opts: ['白令海峡', '苏伊士运河', '巴拿马运河', '土耳其海峡'], ans: 0 },
+      { q: '天气和气候的主要区别是？', opts: ['天气短时间多变，气候长时间稳定', '天气长时间稳定，气候短时间多变', '两者没有区别', '天气只影响陆地，气候只影响海洋'], ans: 0 },
+      { q: '在卫星云图上，绿色表示？', opts: ['陆地', '海洋', '云雨区', '晴天'], ans: 0 },
+      { q: '在卫星云图上，蓝色表示？', opts: ['陆地', '海洋', '云雨区', '晴天'], ans: 1 },
+      { q: '在卫星云图上，白色表示？', opts: ['陆地', '海洋', '云雨区', '晴天'], ans: 2 },
+      { q: '空气质量指数越高，表示？', opts: ['空气质量越好', '空气质量越差', '空气越清新', '污染越少'], ans: 1 },
+      { q: '气温的日变化中，最高气温一般出现在？', opts: ['正午12时', '午后2时左右', '日出前后', '傍晚6时'], ans: 1 },
+      { q: '气温的日变化中，最低气温一般出现在？', opts: ['午夜0时', '日出前后', '午后2时', '傍晚6时'], ans: 1 },
+      { q: '世界气温分布的一般规律是？', opts: ['从赤道向两极逐渐降低', '从赤道向两极逐渐升高', '从沿海向内陆逐渐降低', '从低纬向高纬逐渐升高'], ans: 0 },
+      { q: '同纬度地区，海拔越高气温越？', opts: ['高', '低', '不变', '不确定'], ans: 1 },
+      { q: '降水的主要形式是？', opts: ['降雨', '降雪', '冰雹', '霜冻'], ans: 0 },
+      { q: '世界降水分布的一般规律是？', opts: ['赤道多雨，两极少雨', '赤道少雨，两极多雨', '沿海少雨，内陆多雨', '低纬少雨，高纬多雨'], ans: 0 },
+      { q: '气候的两大要素是？', opts: ['气温和降水', '风和雨', '气压和风', '湿度和温度'], ans: 0 },
+      { q: '热带雨林气候的特点是？', opts: ['全年高温多雨', '全年高温少雨', '夏季高温多雨', '冬季温和多雨'], ans: 0 },
+      { q: '热带沙漠气候的特点是？', opts: ['全年高温多雨', '全年高温少雨', '夏季高温多雨', '冬季温和多雨'], ans: 1 },
+      { q: '地中海气候的特点是？', opts: ['夏季炎热干燥，冬季温和多雨', '夏季高温多雨，冬季寒冷干燥', '全年高温多雨', '全年温和湿润'], ans: 0 },
+      { q: '温带海洋性气候的特点是？', opts: ['全年温和湿润', '夏季高温多雨', '冬季寒冷干燥', '全年高温少雨'], ans: 0 },
+      { q: '季风气候最显著的地区是？', opts: ['亚洲东部和南部', '欧洲西部', '非洲北部', '南美洲南部'], ans: 0 },
+      { q: '影响气候的主要因素不包括？', opts: ['纬度位置', '海陆位置', '地形因素', '人口数量'], ans: 3 },
+      { q: '世界人口最多的国家是？', opts: ['中国', '印度', '美国', '印度尼西亚'], ans: 1 },
+      { q: '世界人口增长过快带来的问题不包括？', opts: ['交通拥堵', '住房紧张', '就业困难', '劳动力不足'], ans: 3 },
+      { q: '世界人口分布稠密的地区是？', opts: ['亚洲东部和南部', '撒哈拉沙漠', '亚马孙平原', '南极洲'], ans: 0 },
+      { q: '世界人口分布稀疏的地区是？', opts: ['亚洲东部', '欧洲西部', '北美东部', '撒哈拉沙漠'], ans: 3 },
+      { q: '白色人种主要分布在？', opts: ['欧洲、北美、大洋洲', '非洲撒哈拉以南', '亚洲东部', '南美洲'], ans: 0 },
+      { q: '黄色人种主要分布在？', opts: ['亚洲东部', '欧洲', '非洲', '北美洲'], ans: 0 },
+      { q: '黑色人种主要分布在？', opts: ['非洲撒哈拉以南', '欧洲', '亚洲东部', '北美洲'], ans: 0 },
+      { q: '世界上使用人数最多的语言是？', opts: ['汉语', '英语', '西班牙语', '阿拉伯语'], ans: 0 },
+      { q: '世界上使用范围最广的语言是？', opts: ['汉语', '英语', '法语', '西班牙语'], ans: 1 },
+      { q: '世界三大宗教不包括？', opts: ['基督教', '伊斯兰教', '佛教', '道教'], ans: 3 },
+      { q: '伊斯兰教的经典是？', opts: ['《圣经》', '《古兰经》', '《佛经》', '《道德经》'], ans: 1 },
+      { q: '聚落分为哪两类？', opts: ['城市聚落和乡村聚落', '工业聚落和农业聚落', '沿海聚落和内陆聚落', '平原聚落和山区聚落'], ans: 0 },
+      { q: '世界上面积最大的国家是？', opts: ['俄罗斯', '加拿大', '中国', '美国'], ans: 0 },
+      { q: '发达国家主要分布在？', opts: ['欧洲、北美、大洋洲', '亚洲、非洲、南美洲', '非洲、南美洲', '亚洲、非洲'], ans: 0 },
+      { q: '发展中国家主要分布在？', opts: ['亚洲、非洲、南美洲', '欧洲、北美', '大洋洲', '北美洲'], ans: 0 },
+      { q: '南北对话是指？', opts: ['发达国家与发展中国家之间的商谈', '南半球与北半球之间的对话', '南方国家与北方国家的合作', '南美洲与北美洲的交流'], ans: 0 },
+      { q: '南南合作是指？', opts: ['发展中国家之间的合作', '南半球国家之间的合作', '南美洲国家之间的合作', '南方国家与北方国家的合作'], ans: 0 },
+      { q: '世界贸易组织简称？', opts: ['WTO', 'WHO', 'UN', 'OPEC'], ans: 0 },
+      { q: '联合国总部设在？', opts: ['纽约', '日内瓦', '巴黎', '伦敦'], ans: 0 },
+      { q: '世界卫生组织简称？', opts: ['WTO', 'WHO', 'UN', 'OPEC'], ans: 1 },
+      { q: '国际奥委会总部设在？', opts: ['洛桑', '纽约', '巴黎', '伦敦'], ans: 0 },
+    ];
+
+    // ============================================================
+    // 测验逻辑
+    // ============================================================
+    let quizQuestions = [];
+    let quizCurrentIndex = 0;
+    let quizUserAnswers = [];
+    let quizScore = 0;
+    let quizFinished = false;
+
+    const quizModal = document.getElementById('quiz-modal');
+    const quizBody = document.getElementById('quizBody');
+    const quizProgressFill = document.getElementById('quizProgressFill');
+    const quizProgressText = document.getElementById('quizProgressText');
+    const quizScoreEl = document.getElementById('quizScore');
+    const quizPrev = document.getElementById('quizPrev');
+    const quizNext = document.getElementById('quizNext');
+    const quizClose = document.getElementById('quizClose');
+    const btnQuiz = document.getElementById('btnQuiz');
+
+    function shuffle(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function startQuiz() {
+      const shuffled = shuffle(QUESTION_BANK);
+      quizQuestions = shuffled.slice(0, 10);
+      quizCurrentIndex = 0;
+      quizUserAnswers = new Array(10).fill(null);
+      quizScore = 0;
+      quizFinished = false;
+      quizModal.classList.add('active');
+      renderQuestion();
+      updateQuizUI();
+    }
+
+    function renderQuestion() {
+      if (quizFinished) { renderResult(); return; }
+      const q = quizQuestions[quizCurrentIndex];
+      const userAns = quizUserAnswers[quizCurrentIndex];
+      const isAnswered = userAns !== null;
+      let html = `
+        <div class="quiz-question">
+          <span class="q-number">第 ${quizCurrentIndex + 1} 题</span>
+          ${q.q}
+        </div>
+        <div class="quiz-options">
+      `;
+      const letters = ['A', 'B', 'C', 'D'];
+      q.opts.forEach((opt, i) => {
+        let cls = 'quiz-option';
+        if (isAnswered) {
+          cls += ' disabled';
+          if (i === q.ans) cls += ' correct';
+          else if (i === userAns) cls += ' wrong';
+        }
+        html += `
+          <div class="${cls}" data-index="${i}">
+            <span class="opt-letter">${letters[i]}</span>
+            <span>${opt}</span>
+          </div>
+        `;
+      });
+      html += `</div>`;
+      quizBody.innerHTML = html;
+      if (!isAnswered) {
+        quizBody.querySelectorAll('.quiz-option').forEach(el => {
+          el.addEventListener('click', () => {
+            const idx = parseInt(el.dataset.index);
+            selectAnswer(idx);
+          });
+        });
+      }
+    }
+
+    function selectAnswer(idx) {
+      if (quizUserAnswers[quizCurrentIndex] !== null) return;
+      quizUserAnswers[quizCurrentIndex] = idx;
+      const q = quizQuestions[quizCurrentIndex];
+      if (idx === q.ans) quizScore++;
+      quizScoreEl.textContent = quizScore;
+      renderQuestion();
+      updateQuizUI();
+    }
+
+    function updateQuizUI() {
+      const total = quizQuestions.length;
+      const current = quizCurrentIndex + 1;
+      quizProgressText.textContent = `${current} / ${total}`;
+      quizProgressFill.style.width = `${(current / total) * 100}%`;
+      quizPrev.disabled = quizCurrentIndex === 0;
+      if (quizFinished) quizNext.textContent = '查看结果';
+      else if (quizCurrentIndex === total - 1) quizNext.textContent = '完成';
+      else quizNext.textContent = '下一题';
+    }
+
+    quizPrev.addEventListener('click', () => {
+      if (quizCurrentIndex > 0) {
+        quizCurrentIndex--;
+        renderQuestion();
+        updateQuizUI();
+      }
+    });
+
+    quizNext.addEventListener('click', () => {
+      const total = quizQuestions.length;
+      if (quizFinished) { startQuiz(); return; }
+      if (quizCurrentIndex < total - 1) {
+        quizCurrentIndex++;
+        renderQuestion();
+        updateQuizUI();
+      } else {
+        quizFinished = true;
+        renderResult();
+        updateQuizUI();
+      }
+    });
+
+    function renderResult() {
+      const total = quizQuestions.length;
+      const correct = quizScore;
+      const wrong = total - correct;
+      const rate = Math.round((correct / total) * 100);
+      let icon, title;
+      if (rate >= 90) { icon = '🏆'; title = '太棒了！地理小达人！'; }
+      else if (rate >= 70) { icon = '🌟'; title = '不错哦，继续加油！'; }
+      else if (rate >= 50) { icon = '📖'; title = '还需努力，再复习一下！'; }
+      else { icon = '💪'; title = '别灰心，重新挑战一次吧！'; }
+      quizBody.innerHTML = `
+        <div class="quiz-result">
+          <div class="result-icon">${icon}</div>
+          <div class="result-title">${title}</div>
+          <div class="result-score">${correct} / ${total}</div>
+          <div class="result-detail">正确率 ${rate}% &nbsp;|&nbsp; 答对 ${correct} 题，答错 ${wrong} 题</div>
+          <div class="result-actions">
+            <button class="btn primary" id="quizRestart">🔄 再来一次</button>
+            <button class="btn" id="quizExit">关闭</button>
+          </div>
+        </div>
+      `;
+      quizProgressFill.style.width = '100%';
+      quizProgressText.textContent = `${total} / ${total}`;
+      quizNext.textContent = '再来一次';
+      quizPrev.disabled = true;
+      document.getElementById('quizRestart').addEventListener('click', startQuiz);
+      document.getElementById('quizExit').addEventListener('click', () => quizModal.classList.remove('active'));
+    }
+
+    quizClose.addEventListener('click', () => quizModal.classList.remove('active'));
+    btnQuiz.addEventListener('click', startQuiz);
+    quizModal.addEventListener('click', (e) => {
+      if (e.target === quizModal) quizModal.classList.remove('active');
+    });
+
+    // ============================================================
+    // 暗室（含墙壁 + 小地图 + 异常）
+    // ============================================================
+    let drScene, drCamera, drRenderer, drClock;
+    let drMonsters = [];
+    let drKeys = [];
+    let drSanity = 100, drBattery = 100, drKills = 0, drKeysCollected = 0;
+    let drGameOver = false, drGameWon = false;
+    let drAnimId = null;
+    let drMouseLocked = false;
+    let drYaw = 0, drPitch = 0;
+    let drBatteryDrain = 0.8;
+    let drMonsterCount = 3;
+    let drKeysTotal = 4;
+    let drExitPos = new THREE.Vector3(0, 0, -25);
+    let drExitDoor = null;
+    let drLastLockTime = 0;
+
+    const DR_ROOM_HALF = 28;
+    let drWalls = [];
+    let drAnomalyTimer = 8;
+    let drAnomalyNextInterval = 8;
+    let drAnomalyElapsed = 0;
+    let drFakeKeys = [];
+    let drMinimapCtx = null;
+
+    const drSanityEl = document.getElementById('drSanity');
+    const drBatteryEl = document.getElementById('drBattery');
+    const drKillsEl = document.getElementById('drKills');
+    const drKeysEl = document.getElementById('drKeys');
+    const drMessageEl = document.getElementById('drMessage');
+    const drAnomalyEl = document.getElementById('drAnomaly');
+    const drVignetteEl = document.getElementById('drVignette');
+    const drExit = document.getElementById('drExit');
+    const darkroomModal = document.getElementById('darkroom-modal');
+
+    function openDarkRoom() {
+      darkroomModal.classList.add('active');
+      initDarkRoom();
+    }
+
+    function closeDarkRoom() {
+      darkroomModal.classList.remove('active');
+      if (drAnimId) { cancelAnimationFrame(drAnimId); drAnimId = null; }
+      if (drRenderer) { drRenderer.dispose(); drRenderer = null; }
+      document.removeEventListener('keydown', drKeyDown);
+      document.removeEventListener('keyup', drKeyUp);
+      document.removeEventListener('mousemove', drMouseMove);
+      document.removeEventListener('mousedown', drMouseDown);
+      document.removeEventListener('pointerlockchange', drPointerLockChange);
+      if (document.pointerLockElement) document.exitPointerLock();
+      drMouseLocked = false;
+    }
+
+    drExit.addEventListener('click', closeDarkRoom);
+
+    const drKeysPressed = {};
+    function drKeyDown(e) {
+      drKeysPressed[e.key.toLowerCase()] = true;
+      if (e.key === 'r' || e.key === 'R') drBattery = Math.min(100, drBattery + 30);
+      if (e.key === 'f' || e.key === 'F') drBatteryDrain = drBatteryDrain > 0 ? 0 : 0.8;
+      if (e.key === 'Escape') {
+        if (document.pointerLockElement) document.exitPointerLock();
+      }
+    }
+    function drKeyUp(e) { drKeysPressed[e.key.toLowerCase()] = false; }
+
+    function drMouseMove(e) {
+      if (!drMouseLocked) return;
+      const sensitivity = 0.0015;
+      drYaw -= e.movementX * sensitivity;
+      drPitch -= e.movementY * sensitivity;
+      drPitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, drPitch));
+      if (drCamera) {
+        drCamera.rotation.order = 'YXZ';
+        drCamera.rotation.y = drYaw;
+        drCamera.rotation.x = drPitch;
+      }
+    }
+
+    function drMouseDown(e) {
+      if (e.button === 0 && drMouseLocked) drShoot();
+    }
+
+    function drPointerLockChange() {
+      drMouseLocked = document.pointerLockElement === drRenderer.domElement;
+    }
+
+    function drShoot() {
+      if (drGameOver || drGameWon) return;
+      const raycaster = new THREE.Raycaster();
+      const dir = new THREE.Vector3();
+      drCamera.getWorldDirection(dir);
+      raycaster.set(drCamera.position, dir);
+      for (const m of drMonsters) {
+        if (!m.alive) continue;
+        const hit = raycaster.intersectObject(m.mesh);
+        if (hit.length > 0) {
+          m.hp--;
+          if (m.hp <= 0) {
+            m.alive = false;
+            m.mesh.visible = false;
+            drKills++;
+            drKillsEl.textContent = drKills;
+            drShowMessage('击杀了一只怪物', 1);
+          } else {
+            m.mesh.material.color.setHex(0xff4444);
+            setTimeout(() => { if (m.mesh) m.mesh.material.color.setHex(0x881111); }, 150);
+          }
+          return;
+        }
+      }
+    }
+
+    function drShowMessage(text, duration = 1.5) {
+      drMessageEl.textContent = text;
+      drMessageEl.style.opacity = '1';
+      setTimeout(() => { drMessageEl.style.opacity = '0'; }, duration * 1000);
+    }
+
+    function drShowAnomaly(text) {
+      drAnomalyEl.textContent = text;
+      drAnomalyEl.classList.add('show');
+      setTimeout(() => { drAnomalyEl.classList.remove('show'); }, 3000);
+    }
+
+    function drCheckWallCollision(pos, radius = 0.5) {
+      for (const wall of drWalls) {
+        if (pos.x + radius > wall.minX && pos.x - radius < wall.maxX &&
+            pos.z + radius > wall.minZ && pos.z - radius < wall.maxZ) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function drMoveWithCollision(newPos, radius = 0.5) {
+      const tryX = drCamera.position.clone();
+      tryX.x = newPos.x;
+      if (!drCheckWallCollision(tryX, radius)) {
+        drCamera.position.x = newPos.x;
+      }
+      const tryZ = drCamera.position.clone();
+      tryZ.z = newPos.z;
+      if (!drCheckWallCollision(tryZ, radius)) {
+        drCamera.position.z = newPos.z;
+      }
+      const limit = DR_ROOM_HALF - 1.5;
+      drCamera.position.x = Math.max(-limit, Math.min(limit, drCamera.position.x));
+      drCamera.position.z = Math.max(-limit, Math.min(limit, drCamera.position.z));
+      drCamera.position.y = 1.7;
+    }
+
+    function initDarkRoom() {
+      const canvas = document.getElementById('darkroomCanvas');
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+
+      drScene = new THREE.Scene();
+      drScene.background = new THREE.Color(0x050508);
+      drScene.fog = new THREE.FogExp2(0x050508, 0.035);
+
+      drCamera = new THREE.PerspectiveCamera(75, width / height, 0.1, 200);
+      drCamera.position.set(0, 1.7, 20);
+
+      drRenderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+      drRenderer.setSize(width, height);
+      drRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+
+      const ambient = new THREE.AmbientLight(0x222233);
+      drScene.add(ambient);
+      const flashlight = new THREE.SpotLight(0xfff5d0, 1.6, 35, Math.PI / 4.5, 0.6, 1);
+      flashlight.position.set(0, 0, 0);
+      drCamera.add(flashlight);
+      flashlight.target.position.set(0, 0, -1);
+      drCamera.add(flashlight.target);
+      drScene.add(drCamera);
+
+      const groundGeo = new THREE.PlaneGeometry(60, 60);
+      const groundMat = new THREE.MeshStandardMaterial({ color: 0x111115, roughness: 0.9 });
+      const ground = new THREE.Mesh(groundGeo, groundMat);
+      ground.rotation.x = -Math.PI / 2;
+      drScene.add(ground);
+
+      drWalls = [];
+      const wallMat = new THREE.MeshStandardMaterial({ color: 0x1a1a22, roughness: 0.8 });
+      const wallMat2 = new THREE.MeshStandardMaterial({ color: 0x252530, roughness: 0.85 });
+      const wallHeight = 6;
+      const wallThick = 0.5;
+
+      function addWall(x, z, w, d, mat) {
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, wallHeight, d), mat || wallMat);
+        mesh.position.set(x, wallHeight / 2, z);
+        drScene.add(mesh);
+        drWalls.push({
+          minX: x - w / 2, maxX: x + w / 2,
+          minZ: z - d / 2, maxZ: z + d / 2
+        });
+      }
+
+      addWall(0, -DR_ROOM_HALF, DR_ROOM_HALF * 2, wallThick);
+      addWall(0, DR_ROOM_HALF, DR_ROOM_HALF * 2, wallThick);
+      addWall(-DR_ROOM_HALF, 0, wallThick, DR_ROOM_HALF * 2);
+      addWall(DR_ROOM_HALF, 0, wallThick, DR_ROOM_HALF * 2);
+
+      const innerWalls = [
+        { x: -12, z: -10, w: 16, d: 0.5 },
+        { x: 12, z: -10, w: 16, d: 0.5 },
+        { x: -12, z: 10, w: 16, d: 0.5 },
+        { x: 12, z: 10, w: 16, d: 0.5 },
+        { x: -10, z: -12, w: 0.5, d: 8 },
+        { x: -10, z: 12, w: 0.5, d: 8 },
+        { x: 10, z: -12, w: 0.5, d: 8 },
+        { x: 10, z: 12, w: 0.5, d: 8 },
+        { x: -5, z: -18, w: 0.5, d: 6 },
+        { x: 5, z: -18, w: 0.5, d: 6 },
+        { x: -18, z: 5, w: 6, d: 0.5 },
+        { x: 18, z: 5, w: 6, d: 0.5 },
+      ];
+      innerWalls.forEach(w => addWall(w.x, w.z, w.w, w.d, wallMat2));
+
+      const exitMat = new THREE.MeshStandardMaterial({ color: 0x00aa00, emissive: 0x004400 });
+      drExitDoor = new THREE.Mesh(new THREE.BoxGeometry(3, 5, 0.3), exitMat);
+      drExitDoor.position.copy(drExitPos);
+      drExitDoor.position.y = 2.5;
+      drScene.add(drExitDoor);
+
+      drKeys = [];
+      for (let i = 0; i < drKeysTotal; i++) {
+        const keyMesh = new THREE.Mesh(
+          new THREE.BoxGeometry(0.5, 0.5, 0.5),
+          new THREE.MeshStandardMaterial({ color: 0xccaa22, emissive: 0x664400 })
+        );
+        let x, z, attempts = 0;
+        do {
+          const angle = Math.random() * Math.PI * 2;
+          const r = 6 + Math.random() * 18;
+          x = Math.cos(angle) * r;
+          z = Math.sin(angle) * r;
+          attempts++;
+        } while (drCheckWallCollision(new THREE.Vector3(x, 1.2, z), 1) && attempts < 50);
+        keyMesh.position.set(x, 1.2, z);
+        drScene.add(keyMesh);
+        drKeys.push({ mesh: keyMesh, collected: false });
+      }
+
+      drMonsters = [];
+      for (let i = 0; i < drMonsterCount; i++) {
+        const monMat = new THREE.MeshStandardMaterial({ color: 0x881111, emissive: 0x220000 });
+        const monMesh = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.5, 0.8), monMat);
+        let x, z, attempts = 0;
+        do {
+          const angle = Math.random() * Math.PI * 2;
+          const r = 12 + Math.random() * 12;
+          x = Math.cos(angle) * r;
+          z = Math.sin(angle) * r;
+          attempts++;
+        } while (drCheckWallCollision(new THREE.Vector3(x, 1.25, z), 1.5) && attempts < 50);
+        monMesh.position.set(x, 1.25, z);
+        drScene.add(monMesh);
+        drMonsters.push({ mesh: monMesh, hp: 3, alive: true, speed: 1.2 + Math.random() * 0.8 });
+      }
+
+      drSanity = 100;
+      drBattery = 100;
+      drKills = 0;
+      drKeysCollected = 0;
+      drGameOver = false;
+      drGameWon = false;
+      drYaw = 0;
+      drPitch = 0;
+      drBatteryDrain = 0.8;
+      drAnomalyTimer = 8;
+      drAnomalyNextInterval = 8;
+      drAnomalyElapsed = 0;
+      drFakeKeys = [];
+      drSanityEl.textContent = '100';
+      drBatteryEl.textContent = '100%';
+      drKillsEl.textContent = '0';
+      drKeysEl.textContent = '0/' + drKeysTotal;
+      drMessageEl.textContent = '';
+      drVignetteEl.style.opacity = '0';
+      drShowAnomaly('你进入了暗室...');
+
+      const minimapCanvas = document.getElementById('drMinimapCanvas');
+      drMinimapCtx = minimapCanvas.getContext('2d');
+
+      if (!document.pointerLockElement) {
+        drRenderer.domElement.requestPointerLock();
+        drLastLockTime = performance.now();
+      }
+
+      document.addEventListener('keydown', drKeyDown);
+      document.addEventListener('keyup', drKeyUp);
+      document.addEventListener('mousemove', drMouseMove);
+      document.addEventListener('mousedown', drMouseDown);
+      document.addEventListener('pointerlockchange', drPointerLockChange);
+
+      drClock = new THREE.Clock();
+
+      function drTriggerRandomAnomaly() {
+        const anomalies = [
+          () => { drBatteryDrain = 0; setTimeout(() => { drBatteryDrain = 0.8; }, 4000); drShowAnomaly('灯灭了。'); },
+          () => { drShowAnomaly('它在看着你...'); },
+          () => { drShowAnomaly('别回头。'); },
+          () => { drShowAnomaly('快跑。'); },
+          () => { drShowAnomaly('有人在你身后呼吸。'); },
+          () => { drShowAnomaly('你的手电在骗你。'); },
+          () => { drShowAnomaly('第三个房间，别进去。'); },
+          () => {
+            if (drFakeKeys.length > 2) return;
+            const angle = Math.random() * Math.PI * 2;
+            const r = 6 + Math.random() * 12;
+            const pos = new THREE.Vector3(
+              drCamera.position.x + Math.cos(angle) * r, 1.2,
+              drCamera.position.z + Math.sin(angle) * r
+            );
+            const fk = new THREE.Mesh(
+              new THREE.BoxGeometry(0.5, 0.5, 0.5),
+              new THREE.MeshStandardMaterial({ color: 0x9a8a2a, emissive: 0x443300 })
+            );
+            fk.position.copy(pos);
+            drScene.add(fk);
+            drFakeKeys.push(fk);
+            drShowAnomaly('...好像有钥匙');
+          },
+          () => {
+            const angle = Math.random() * Math.PI * 2;
+            const r = 8 + Math.random() * 6;
+            const ghost = new THREE.Mesh(
+              new THREE.BoxGeometry(0.8, 2.3, 0.4),
+              new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.8 })
+            );
+            ghost.position.set(
+              drCamera.position.x + Math.cos(angle) * r, 1.5,
+              drCamera.position.z + Math.sin(angle) * r
+            );
+            drScene.add(ghost);
+            setTimeout(() => { if (ghost.parent) drScene.remove(ghost); }, 2000);
+            drShowAnomaly('...');
+          }
+        ];
+        const fn = anomalies[Math.floor(Math.random() * anomalies.length)];
+        try { fn(); } catch (e) {}
+      }
+
+      function animateDarkRoom() {
+        drAnimId = requestAnimationFrame(animateDarkRoom);
+        const dt = Math.min(0.05, drClock.getDelta());
+
+        if (!drMouseLocked && !drGameOver && !drGameWon) {
+          const now = performance.now();
+          if (now - drLastLockTime > 1500) {
+            drRenderer.domElement.requestPointerLock();
+            drLastLockTime = now;
+          }
+        }
+
+        if (!drGameOver && !drGameWon) {
+          const speed = 4.5;
+          const moveDir = new THREE.Vector3();
+          if (drKeysPressed['w']) moveDir.z -= 1;
+          if (drKeysPressed['s']) moveDir.z += 1;
+          if (drKeysPressed['a']) moveDir.x -= 1;
+          if (drKeysPressed['d']) moveDir.x += 1;
+          if (moveDir.length() > 0) {
+            moveDir.normalize();
+            const forward = new THREE.Vector3();
+            drCamera.getWorldDirection(forward);
+            forward.y = 0; forward.normalize();
+            const right = new THREE.Vector3();
+            right.crossVectors(forward, new THREE.Vector3(0, 1, 0));
+            const move = new THREE.Vector3();
+            move.addScaledVector(forward, -moveDir.z);
+            move.addScaledVector(right, moveDir.x);
+            const newPos = drCamera.position.clone().addScaledVector(move, speed * dt);
+            drMoveWithCollision(newPos, 0.6);
+          }
+
+          if (drBatteryDrain > 0) {
+            drBattery -= drBatteryDrain * dt;
+            if (drBattery <= 0) { drBattery = 0; drBatteryDrain = 0; }
+          }
+          drBatteryEl.textContent = Math.round(drBattery) + '%';
+
+          if (drBatteryDrain <= 0) drSanity -= 3 * dt;
+          else drSanity = Math.min(100, drSanity + 1 * dt);
+          if (drSanity < 0) drSanity = 0;
+          drSanityEl.textContent = Math.round(drSanity);
+
+          const darkness = (100 - drSanity) / 100;
+          drVignetteEl.style.opacity = darkness * 0.8;
+
+          drAnomalyElapsed += dt;
+          drAnomalyTimer -= dt;
+          if (drAnomalyTimer <= 0) {
+            drTriggerRandomAnomaly();
+            drAnomalyNextInterval = Math.max(5, 12 - drAnomalyElapsed / 40);
+            drAnomalyTimer = drAnomalyNextInterval + (Math.random() * 4 - 2);
+          }
+
+          for (let i = drFakeKeys.length - 1; i >= 0; i--) {
+            const fk = drFakeKeys[i];
+            if (drCamera.position.distanceTo(fk.position) < 1.5) {
+              drScene.remove(fk);
+              drFakeKeys.splice(i, 1);
+              drShowAnomaly('...是个假的');
+            }
+          }
+
+          for (const m of drMonsters) {
+            if (!m.alive) continue;
+            const toPlayer = new THREE.Vector3().subVectors(drCamera.position, m.mesh.position);
+            const dist = toPlayer.length();
+            if (dist < 18) {
+              toPlayer.y = 0; toPlayer.normalize();
+              const newMonPos = m.mesh.position.clone().addScaledVector(toPlayer, m.speed * dt);
+              if (!drCheckWallCollision(newMonPos, 0.8)) {
+                m.mesh.position.copy(newMonPos);
+              } else {
+                const perp = new THREE.Vector3(-toPlayer.z, 0, toPlayer.x);
+                const tryPos = m.mesh.position.clone().addScaledVector(perp, m.speed * dt * 0.7);
+                if (!drCheckWallCollision(tryPos, 0.8)) {
+                  m.mesh.position.copy(tryPos);
+                }
+              }
+              m.mesh.lookAt(drCamera.position.x, m.mesh.position.y, drCamera.position.z);
+            }
+            if (dist < 1.8) {
+              drGameOver = true;
+              drMessageEl.style.color = '#ff3333';
+              drShowMessage('它抓住了你...', 999);
+            }
+          }
+
+          for (const k of drKeys) {
+            if (k.collected) continue;
+            if (drCamera.position.distanceTo(k.mesh.position) < 1.5) {
+              k.collected = true;
+              k.mesh.visible = false;
+              drKeysCollected++;
+              drKeysEl.textContent = drKeysCollected + '/' + drKeysTotal;
+              drShowMessage('拿到钥匙！', 1);
+            }
+          }
+
+          if (drKeysCollected >= drKeysTotal) {
+            drExitDoor.material.color.setHex(0x00ff00);
+            drExitDoor.material.emissive.setHex(0x00aa00);
+            if (drCamera.position.distanceTo(drExitPos) < 4) {
+              drGameWon = true;
+              drMessageEl.style.color = '#66ff66';
+              drShowMessage('你逃出去了...', 999);
+            }
+          }
+        }
+
+        if (drMinimapCtx) {
+          const mapSize = 160;
+          const scale = mapSize / (DR_ROOM_HALF * 2);
+          drMinimapCtx.clearRect(0, 0, mapSize, mapSize);
+          drMinimapCtx.fillStyle = 'rgba(5, 10, 20, 0.9)';
+          drMinimapCtx.fillRect(0, 0, mapSize, mapSize);
+
+          function worldToMap(x, z) {
+            return { mx: (x + DR_ROOM_HALF) * scale, my: (z + DR_ROOM_HALF) * scale };
+          }
+
+          drMinimapCtx.fillStyle = 'rgba(100, 130, 180, 0.5)';
+          for (const wall of drWalls) {
+            const p1 = worldToMap(wall.minX, wall.minZ);
+            const p2 = worldToMap(wall.maxX, wall.maxZ);
+            drMinimapCtx.fillRect(p1.mx, p1.my, p2.mx - p1.mx, p2.my - p1.my);
+          }
+
+          drMinimapCtx.fillStyle = '#ffcc44';
+          for (const k of drKeys) {
+            if (k.collected) continue;
+            const p = worldToMap(k.mesh.position.x, k.mesh.position.z);
+            drMinimapCtx.beginPath();
+            drMinimapCtx.arc(p.mx, p.my, 3, 0, Math.PI * 2);
+            drMinimapCtx.fill();
+          }
+
+          drMinimapCtx.fillStyle = '#aa8822';
+          for (const fk of drFakeKeys) {
+            const p = worldToMap(fk.position.x, fk.position.z);
+            drMinimapCtx.beginPath();
+            drMinimapCtx.arc(p.mx, p.my, 2, 0, Math.PI * 2);
+            drMinimapCtx.fill();
+          }
+
+          drMinimapCtx.fillStyle = '#ff3333';
+          for (const m of drMonsters) {
+            if (!m.alive) continue;
+            const p = worldToMap(m.mesh.position.x, m.mesh.position.z);
+            drMinimapCtx.beginPath();
+            drMinimapCtx.arc(p.mx, p.my, 3.5, 0, Math.PI * 2);
+            drMinimapCtx.fill();
+          }
+
+          const ep = worldToMap(drExitPos.x, drExitPos.z);
+          drMinimapCtx.fillStyle = drKeysCollected >= drKeysTotal ? '#00ff00' : '#00aa00';
+          drMinimapCtx.beginPath();
+          drMinimapCtx.arc(ep.mx, ep.my, 4, 0, Math.PI * 2);
+          drMinimapCtx.fill();
+
+          const pp = worldToMap(drCamera.position.x, drCamera.position.z);
+          drMinimapCtx.save();
+          drMinimapCtx.translate(pp.mx, pp.my);
+          drMinimapCtx.rotate(-drYaw);
+          drMinimapCtx.fillStyle = '#88ddff';
+          drMinimapCtx.beginPath();
+          drMinimapCtx.moveTo(0, -6);
+          drMinimapCtx.lineTo(-4, 4);
+          drMinimapCtx.lineTo(4, 4);
+          drMinimapCtx.closePath();
+          drMinimapCtx.fill();
+          drMinimapCtx.restore();
+
+          drMinimapCtx.strokeStyle = 'rgba(100, 180, 255, 0.4)';
+          drMinimapCtx.lineWidth = 1;
+          drMinimapCtx.strokeRect(0.5, 0.5, mapSize - 1, mapSize - 1);
+        }
+
+        drRenderer.render(drScene, drCamera);
+      }
+      animateDarkRoom();
+    }
+
+    // ============================================================
+    // 3D 太阳系
+    // ============================================================
+    function initSolarSystem() {
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x050510);
+
+      const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+      camera.position.set(0, 8, 22);
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      // 把 canvas 放在游戏容器最前面（面板之下）
+      gameContainer.insertBefore(renderer.domElement, gameContainer.firstChild);
+
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.rotateSpeed = 0.8;
+      controls.zoomSpeed = 1.2;
+      controls.enablePan = false;
+      controls.minDistance = 8;
+      controls.maxDistance = 50;
+      controls.autoRotate = false;
+      controls.target.set(0, 0, 0);
+
+      (function addStars() {
+        const vertices = [];
+        for (let i = 0; i < 6000; i++) {
+          vertices.push(
+            (Math.random() - 0.5) * 2000,
+            (Math.random() - 0.5) * 2000,
+            (Math.random() - 0.5) * 2000
+          );
+        }
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        const mat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.6, sizeAttenuation: true });
+        scene.add(new THREE.Points(geo, mat));
+      })();
+
+      const sun = new THREE.Mesh(
+        new THREE.SphereGeometry(1.8, 64, 64),
+        new THREE.MeshPhongMaterial({ color: 0xffaa00, emissive: 0xff6600, emissiveIntensity: 1.5 })
+      );
+      scene.add(sun);
+
+      const sunGlow = new THREE.Mesh(
+        new THREE.SphereGeometry(2.2, 64, 64),
+        new THREE.MeshPhongMaterial({ color: 0xffaa00, transparent: true, opacity: 0.15, side: THREE.BackSide })
+      );
+      scene.add(sunGlow);
+
+      const sunParticlesGeo = new THREE.BufferGeometry();
+      const sunParticleCount = 800;
+      const sunParticlePositions = new Float32Array(sunParticleCount * 3);
+      for (let i = 0; i < sunParticleCount; i++) {
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos((Math.random() * 2) - 1);
+        const r = 1.8 + Math.random() * 1.5;
+        sunParticlePositions[i*3] = r * Math.sin(phi) * Math.cos(theta);
+        sunParticlePositions[i*3+1] = r * Math.sin(phi) * Math.sin(theta);
+        sunParticlePositions[i*3+2] = r * Math.cos(phi);
+      }
+      sunParticlesGeo.setAttribute('position', new THREE.BufferAttribute(sunParticlePositions, 3));
+      const sunParticles = new THREE.Points(sunParticlesGeo, new THREE.PointsMaterial({
+        color: 0xffdd66, size: 0.08, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending
+      }));
+      scene.add(sunParticles);
+
+      const sunLight = new THREE.PointLight(0xffdd88, 2.0, 0, 1);
+      scene.add(sunLight);
+
+      const earthMap = createEarthTexture();
+      const cloudMap = createCloudTexture();
+
+      const EARTH_RADIUS = 0.9;
+      const ORBIT_RADIUS = 8;
+
+      const earthGroup = new THREE.Group();
+      scene.add(earthGroup);
+
+      const earth = new THREE.Mesh(
+        new THREE.SphereGeometry(EARTH_RADIUS, 64, 64),
+        new THREE.MeshPhongMaterial({
+          map: earthMap, shininess: 8, emissive: new THREE.Color(0x000022)
+        })
+      );
+      earthGroup.add(earth);
+
+      const clouds = new THREE.Mesh(
+        new THREE.SphereGeometry(EARTH_RADIUS * 1.005, 48, 48),
+        new THREE.MeshPhongMaterial({
+          map: cloudMap, transparent: true, opacity: 0.35,
+          blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false
+        })
+      );
+      earth.add(clouds);
+
+      earth.add(new THREE.Mesh(
+        new THREE.SphereGeometry(EARTH_RADIUS * 1.02, 48, 48),
+        new THREE.MeshPhongMaterial({ color: 0x88aaff, transparent: true, opacity: 0.07, side: THREE.BackSide })
+      ));
+
+      const R = EARTH_RADIUS * 1.003;
+
+      function createLatitudeCircle(latDeg, color) {
+        const latRad = latDeg * Math.PI / 180;
+        const radiusAtLat = R * Math.cos(latRad);
+        const y = R * Math.sin(latRad);
+        const points = [];
+        const segments = 128;
+        for (let i = 0; i <= segments; i++) {
+          const lonRad = (i / segments) * Math.PI * 2;
+          points.push(new THREE.Vector3(
+            radiusAtLat * Math.sin(lonRad), y, radiusAtLat * Math.cos(lonRad)
+          ));
+        }
+        const geo = new THREE.BufferGeometry().setFromPoints(points);
+        return new THREE.Line(geo, new THREE.LineBasicMaterial({ color }));
+      }
+
+      const equatorGroup = new THREE.Group();
+      equatorGroup.add(createLatitudeCircle(0, 0xffaa00));
+      earth.add(equatorGroup);
+
+      const tropicGroup = new THREE.Group();
+      tropicGroup.add(createLatitudeCircle(23.5, 0xff6633));
+      tropicGroup.add(createLatitudeCircle(-23.5, 0xff6633));
+      earth.add(tropicGroup);
+
+      const arcticGroup = new THREE.Group();
+      arcticGroup.add(createLatitudeCircle(66.5, 0x44ddff));
+      arcticGroup.add(createLatitudeCircle(-66.5, 0x44ddff));
+      earth.add(arcticGroup);
+
+      (function addOrbitLine() {
+        const pts = [];
+        for (let i = 0; i <= 256; i++) {
+          const a = (i / 256) * Math.PI * 2;
+          pts.push(new THREE.Vector3(Math.cos(a) * ORBIT_RADIUS, 0, Math.sin(a) * ORBIT_RADIUS));
+        }
+        const geo = new THREE.BufferGeometry().setFromPoints(pts);
+        scene.add(new THREE.LineLoop(geo, new THREE.LineBasicMaterial({ color: 0x446688, transparent: true, opacity: 0.3 })));
+      })();
+
+      scene.add(new THREE.AmbientLight(0x404060));
+      const fillLight = new THREE.DirectionalLight(0x4466aa, 0.4);
+      fillLight.position.set(-5, 5, -5);
+      scene.add(fillLight);
+
+      const lngVal = document.getElementById('lngVal');
+      const latVal = document.getElementById('latVal');
+      const viewAngle = document.getElementById('viewAngle');
+      const orbitAngleDisplay = document.getElementById('orbitAngleDisplay');
+
+      const speedSlider = document.getElementById('speedSlider');
+      const speedVal = document.getElementById('speedVal');
+      const tiltSlider = document.getElementById('tiltSlider');
+      const tiltVal = document.getElementById('tiltVal');
+      const orbitSlider = document.getElementById('orbitSlider');
+      const orbitPosVal = document.getElementById('orbitPosVal');
+      const seasonName = document.getElementById('seasonName');
+      const seasonDesc = document.getElementById('seasonDesc');
+      const seasonExtra = document.getElementById('seasonExtra');
+      const btnPlay = document.getElementById('btnPlay');
+      const btnReset = document.getElementById('btnReset');
+
+      const cbEquator = document.getElementById('cbEquator');
+      const cbTropic = document.getElementById('cbTropic');
+      const cbArctic = document.getElementById('cbArctic');
+
+      let orbitSpeedMultiplier = 1.0;
+      let axisTiltDeg = 23.5;
+      let orbitAngle = 0;
+      let isPlaying = true;
+      const BASE_ORBIT_SPEED = 0.15;
+
+      function getSeason(angleDeg) {
+        const a = ((angleDeg % 360) + 360) % 360;
+        if (a >= 315 || a < 45) {
+          return { name: '春分', date: '3月21日前后', extra: '昼夜平分' };
+        } else if (a >= 45 && a < 135) {
+          return { name: '夏至', date: '6月22日前后', extra: '昼长夜短' };
+        } else if (a >= 135 && a < 225) {
+          return { name: '秋分', date: '9月23日前后', extra: '昼夜平分' };
+        } else {
+          return { name: '冬至', date: '12月22日前后', extra: '昼短夜长' };
+        }
+      }
+
+      function updateSeasonDisplay() {
+        const angleDeg = (orbitAngle * 180 / Math.PI) % 360;
+        const season = getSeason(angleDeg);
+        seasonName.textContent = season.name;
+        seasonDesc.textContent = season.date;
+        seasonExtra.textContent = season.extra;
+      }
+
+      speedSlider.addEventListener('input', () => {
+        orbitSpeedMultiplier = parseFloat(speedSlider.value);
+        speedVal.textContent = orbitSpeedMultiplier.toFixed(1) + 'x';
+      });
+
+      tiltSlider.addEventListener('input', () => {
+        axisTiltDeg = parseFloat(tiltSlider.value);
+        tiltVal.textContent = axisTiltDeg.toFixed(1) + '°';
+        earthGroup.rotation.z = -axisTiltDeg * Math.PI / 180;
+      });
+
+      orbitSlider.addEventListener('input', () => {
+        const deg = parseFloat(orbitSlider.value);
+        orbitAngle = deg * Math.PI / 180;
+        orbitPosVal.textContent = deg.toFixed(0) + '°';
+        updateSeasonDisplay();
+        updateOrbitAngleDisplay();
+      });
+
+      cbEquator.addEventListener('change', () => { equatorGroup.visible = cbEquator.checked; });
+      cbTropic.addEventListener('change', () => { tropicGroup.visible = cbTropic.checked; });
+      cbArctic.addEventListener('change', () => { arcticGroup.visible = cbArctic.checked; });
+
+      btnPlay.addEventListener('click', () => {
+        isPlaying = !isPlaying;
+        btnPlay.textContent = isPlaying ? '⏸ 暂停' : '▶ 播放';
+        btnPlay.classList.toggle('active', !isPlaying);
+      });
+
+      btnReset.addEventListener('click', () => {
+        orbitAngle = 0;
+        orbitSpeedMultiplier = 1.0;
+        axisTiltDeg = 23.5;
+        isPlaying = true;
+        speedSlider.value = 1.0;
+        speedVal.textContent = '1.0x';
+        tiltSlider.value = 23.5;
+        tiltVal.textContent = '23.5°';
+        orbitSlider.value = 0;
+        orbitPosVal.textContent = '0°';
+        earthGroup.rotation.z = -axisTiltDeg * Math.PI / 180;
+        btnPlay.textContent = '⏸ 暂停';
+        btnPlay.classList.remove('active');
+        cbEquator.checked = true;
+        cbTropic.checked = true;
+        cbArctic.checked = true;
+        equatorGroup.visible = true;
+        tropicGroup.visible = true;
+        arcticGroup.visible = true;
+        updateSeasonDisplay();
+        updateOrbitAngleDisplay();
+      });
+
+      earthGroup.rotation.z = -axisTiltDeg * Math.PI / 180;
+
+      const raycaster = new THREE.Raycaster();
+      const mouse = new THREE.Vector2();
+
+      renderer.domElement.addEventListener('mousemove', (event) => {
+        mouse.x = (event.clientX / renderer.domElement.clientWidth) * 2 - 1;
+        mouse.y = -(event.clientY / renderer.domElement.clientHeight) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+
+        const intersects = raycaster.intersectObject(earth);
+        if (intersects.length > 0 && intersects[0].uv) {
+          const uv = intersects[0].uv;
+          let lonDeg = (uv.x - 0.5) * 360;
+          let latDeg = (uv.y - 0.5) * 180;
+          while (lonDeg < -180) lonDeg += 360;
+          while (lonDeg > 180) lonDeg -= 360;
+          latVal.textContent = `${Math.abs(latDeg).toFixed(2)}° ${latDeg >= 0 ? 'N' : 'S'}`;
+          lngVal.textContent = `${Math.abs(lonDeg).toFixed(2)}° ${lonDeg >= 0 ? 'E' : 'W'}`;
+        } else {
+          latVal.textContent = '--°';
+          lngVal.textContent = '--°';
+        }
+      });
+
+      renderer.domElement.addEventListener('mouseleave', () => {
+        latVal.textContent = '--°';
+        lngVal.textContent = '--°';
+      });
+
+      function updateOrbitAngleDisplay() {
+        const deg = (orbitAngle * 180 / Math.PI) % 360;
+        orbitAngleDisplay.textContent = deg.toFixed(1) + '°';
+      }
+
+      let lastTime = performance.now();
+
+      function animate() {
+        requestAnimationFrame(animate);
+        const now = performance.now();
+        const delta = Math.min(0.05, (now - lastTime) / 1000);
+        lastTime = now;
+
+        if (isPlaying && gameContainer.classList.contains('active')) {
+          orbitAngle += BASE_ORBIT_SPEED * orbitSpeedMultiplier * delta;
+          if (orbitAngle > Math.PI * 2) orbitAngle -= Math.PI * 2;
+          const deg = (orbitAngle * 180 / Math.PI) % 360;
+          orbitSlider.value = deg.toFixed(0);
+          orbitPosVal.textContent = deg.toFixed(0) + '°';
+          updateSeasonDisplay();
+        }
+
+        earthGroup.position.x = Math.cos(orbitAngle) * ORBIT_RADIUS;
+        earthGroup.position.z = Math.sin(orbitAngle) * ORBIT_RADIUS;
+
+        sun.rotation.y += 0.002;
+        sunGlow.rotation.y += 0.001;
+        sunParticles.rotation.y += 0.0005;
+        clouds.rotation.y += 0.0005;
+
+        controls.update();
+
+        const camPos = camera.position;
+        const angle = Math.atan2(camPos.x, camPos.z) * 180 / Math.PI;
+        viewAngle.textContent = `${((angle + 360) % 360).toFixed(1)}°`;
+
+        updateOrbitAngleDisplay();
+        renderer.render(scene, camera);
+      }
+
+      updateSeasonDisplay();
+      animate();
+
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        if (drRenderer) {
+          drRenderer.setSize(window.innerWidth, window.innerHeight);
+          drCamera.aspect = window.innerWidth / window.innerHeight;
+          drCamera.updateProjectionMatrix();
+        }
+      });
+
+      document.getElementById('loading').style.display = 'none';
+    }
+
+    console.log('地理学习工具（隐藏暗室版）已启动');
+  </script>
+</body>
+</html>
